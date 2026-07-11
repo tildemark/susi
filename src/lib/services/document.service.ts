@@ -38,21 +38,31 @@ export const documentService = {
 
     if (!tenant) throw new Error('Tenant not found');
 
-    const fileName = `lease-${tenant.id}-${Date.now()}.pdf`;
+    const fileName = `lease-${tenant.id}-${Date.now()}.txt`;
 
-    // Upload mock PDF buffer to S3 MinIO
-    const mockPdfBuffer = Buffer.from(
-      `%PDF-1.4\n1 0 obj\n<< /Title (Lease Agreement) /Author (SUSI App) >>\nendobj\nxref\n0 1\n0000000000 65535 f\ntrailer\n<< /Size 2 >>\nstartxref\n116\n%%EOF`
-    );
+    const content = `=========================================
+          LEASE AGREEMENT
+=========================================
+Tenant Name: ${tenant.firstName} ${tenant.lastName}
+Tenant Email: ${tenant.email}
+Tenant Phone: ${tenant.phone}
+Assigned Unit: ${tenant.unit ? tenant.unit.roomNumber : 'N/A'}
+Monthly Rental Rate: ₱${tenant.unit ? tenant.unit.monthlyRate.toLocaleString() : '0'}
+Security Deposit: ₱${tenant.depositPaid.toLocaleString()}
+Advance Payment: ₱${tenant.advancePaid.toLocaleString()}
 
-    await minioClient.putObject(BUCKET_NAME, fileName, mockPdfBuffer, mockPdfBuffer.length, {
-      'Content-Type': 'application/pdf',
+Generated on: ${new Date().toLocaleString()}
+System for Unit & Space Inventory (SUSI)
+=========================================`;
+
+    const mockBuffer = Buffer.from(content);
+
+    await minioClient.putObject(BUCKET_NAME, fileName, mockBuffer, mockBuffer.length, {
+      'Content-Type': 'text/plain',
     });
 
-    // Generate secure Presigned URL for downloading (lasts 7 days/604800 seconds max)
     const presignedUrl = await minioClient.presignedGetObject(BUCKET_NAME, fileName, 24 * 60 * 60);
 
-    // Record document link in database
     await this.createDocument({
       tenantId,
       type: 'LEASE',
@@ -72,18 +82,28 @@ export const documentService = {
 
     if (!tenant) throw new Error('Tenant not found');
 
-    const fileName = `notice-${type.toLowerCase()}-${tenant.id}-${Date.now()}.pdf`;
+    const fileName = `notice-${type.toLowerCase()}-${tenant.id}-${Date.now()}.txt`;
 
-    // Upload mock PDF buffer to S3 MinIO
-    const mockPdfBuffer = Buffer.from(
-      `%PDF-1.4\n1 0 obj\n<< /Title (Notice: ${type}) /Author (SUSI App) >>\nendobj\nxref\n0 1\n0000000000 65535 f\ntrailer\n<< /Size 2 >>\nstartxref\n116\n%%EOF`
-    );
+    const content = `=========================================
+          OFFICIAL NOTICE: ${type}
+=========================================
+Recipient: ${tenant.firstName} ${tenant.lastName}
+Unit Address: ${tenant.unit ? tenant.unit.roomNumber : 'N/A'}
+Billing Email: ${tenant.email}
 
-    await minioClient.putObject(BUCKET_NAME, fileName, mockPdfBuffer, mockPdfBuffer.length, {
-      'Content-Type': 'application/pdf',
+This document serves as formal notification regarding your unit's status.
+Please contact management immediately to resolve any outstanding matters.
+
+Generated on: ${new Date().toLocaleString()}
+System for Unit & Space Inventory (SUSI)
+=========================================`;
+
+    const mockBuffer = Buffer.from(content);
+
+    await minioClient.putObject(BUCKET_NAME, fileName, mockBuffer, mockBuffer.length, {
+      'Content-Type': 'text/plain',
     });
 
-    // Generate secure Presigned URL for downloading (lasts 24 hours)
     const presignedUrl = await minioClient.presignedGetObject(BUCKET_NAME, fileName, 24 * 60 * 60);
 
     await this.createDocument({
