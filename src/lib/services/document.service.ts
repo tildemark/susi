@@ -54,7 +54,6 @@ export const documentService = {
     if (!tenant) throw new Error('Tenant not found');
 
     const fileName = `lease-${tenant.id}-${Date.now()}.pdf`;
-    const mockFileUrl = `http://localhost:9000/documents/${fileName}`;
 
     // Upload mock PDF buffer to S3 MinIO
     const mockPdfBuffer = Buffer.from(
@@ -65,14 +64,17 @@ export const documentService = {
       'Content-Type': 'application/pdf',
     });
 
+    // Generate secure Presigned URL for downloading (lasts 7 days/604800 seconds max)
+    const presignedUrl = await minioClient.presignedGetObject(BUCKET_NAME, fileName, 24 * 60 * 60);
+
     // Record document link in database
     await this.createDocument({
       tenantId,
       type: 'LEASE',
-      fileUrl: mockFileUrl,
+      fileUrl: presignedUrl,
     });
 
-    return mockFileUrl;
+    return presignedUrl;
   },
 
   async generateNoticePdf(tenantId: string, type: 'NOTICE_ARREARS' | 'NOTICE_EVICTION') {
@@ -86,7 +88,6 @@ export const documentService = {
     if (!tenant) throw new Error('Tenant not found');
 
     const fileName = `notice-${type.toLowerCase()}-${tenant.id}-${Date.now()}.pdf`;
-    const mockFileUrl = `http://localhost:9000/documents/${fileName}`;
 
     // Upload mock PDF buffer to S3 MinIO
     const mockPdfBuffer = Buffer.from(
@@ -97,12 +98,15 @@ export const documentService = {
       'Content-Type': 'application/pdf',
     });
 
+    // Generate secure Presigned URL for downloading (lasts 24 hours)
+    const presignedUrl = await minioClient.presignedGetObject(BUCKET_NAME, fileName, 24 * 60 * 60);
+
     await this.createDocument({
       tenantId,
       type,
-      fileUrl: mockFileUrl,
+      fileUrl: presignedUrl,
     });
 
-    return mockFileUrl;
+    return presignedUrl;
   },
 };
