@@ -7,22 +7,22 @@ async function ensureBucketAndPublicPolicy() {
   const exists = await minioClient.bucketExists(BUCKET_NAME);
   if (!exists) {
     await minioClient.makeBucket(BUCKET_NAME, 'us-east-1');
-
-    // Set read-only policy for anonymous access so tenant downloads don't fail with AccessDenied
-    const policy = {
-      Version: '2012-10-17',
-      Statement: [
-        {
-          Sid: 'PublicRead',
-          Effect: 'Allow',
-          Principal: '*',
-          Action: ['s3:GetObject'],
-          Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`],
-        },
-      ],
-    };
-    await minioClient.setBucketPolicy(BUCKET_NAME, JSON.stringify(policy));
   }
+
+  // Set read-only policy for anonymous access so tenant downloads don't fail with AccessDenied
+  const policy = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'PublicRead',
+        Effect: 'Allow',
+        Principal: '*',
+        Action: ['s3:GetObject'],
+        Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`],
+      },
+    ],
+  };
+  await minioClient.setBucketPolicy(BUCKET_NAME, JSON.stringify(policy));
 }
 
 export const documentService = {
