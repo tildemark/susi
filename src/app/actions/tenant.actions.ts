@@ -51,3 +51,13 @@ export async function unlinkTenantAction(id: string, unitId: string | null) {
     revalidatePath('/units');
   }
 }
+
+export async function linkTenantAction(id: string, unitId: string) {
+  'use server';
+
+  await tenantService.updateTenant(id, { unitId });
+
+  revalidatePath('/tenants');
+  revalidatePath(`/units/${unitId}`);
+  revalidatePath('/units');
+}

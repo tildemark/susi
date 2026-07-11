@@ -1,6 +1,8 @@
 import { unitService } from '@/lib/services/unit.service';
+import { tenantService } from '@/lib/services/tenant.service';
 import { updateUnitMetersAction, updateUnitStatusAction } from '@/app/actions/unit.actions';
-import { Button, Input, Label } from '@/components/ui-elements';
+import { linkTenantAction } from '@/app/actions/tenant.actions';
+import { Button, Input, Label, Select } from '@/components/ui-elements';
 import Link from 'next/link';
 import { ArrowLeft, User, CreditCard, Droplets, Zap, ShieldAlert } from 'lucide-react';
 import { notFound } from 'next/navigation';
@@ -14,6 +16,8 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
     notFound();
   }
 
+  const allTenants = await tenantService.getTenants();
+  const unassignedTenants = allTenants.filter((t) => !t.unitId && t.status === 'ACTIVE');
   const activeTenant = unit.tenants.find((t) => t.status === 'ACTIVE');
 
   return (
@@ -157,14 +161,42 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
                 </div>
               </div>
             ) : (
-              <div className="text-center py-6 space-y-4">
-                <p className="text-slate-400 text-sm">This space is currently vacant.</p>
-                <Link
-                  href="/tenants/new"
-                  className="inline-flex w-full justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition-colors shadow"
-                >
-                  Assign Tenant
-                </Link>
+              <div className="space-y-4">
+                <p className="text-slate-400 text-sm text-center">This space is currently vacant.</p>
+                
+                {unassignedTenants.length > 0 ? (
+                  <form action={async (formData) => {
+                    'use server';
+                    const tenantId = formData.get('tenantId') as string;
+                    if (tenantId) {
+                      await linkTenantAction(tenantId, unit.id);
+                    }
+                  }} className="space-y-3 pt-2 border-t border-slate-100">
+                    <Label htmlFor="tenantId">Assign Existing Tenant</Label>
+                    <Select id="tenantId" name="tenantId" required>
+                      <option value="">-- Choose Tenant --</option>
+                      {unassignedTenants.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.firstName} {t.lastName}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button type="submit" className="w-full justify-center text-xs">
+                      Assign Selected Tenant
+                    </Button>
+                  </form>
+                ) : (
+                  <p className="text-slate-450 text-xs text-center italic">No unassigned active tenants available.</p>
+                )}
+
+                <div className="pt-2 border-t border-slate-100">
+                  <Link
+                    href="/tenants/new"
+                    className="inline-flex w-full justify-center px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                  >
+                    Register New Tenant
+                  </Link>
+                </div>
               </div>
             )}
           </div>
