@@ -1,0 +1,129 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UnitStatus {
+  VACANT
+  OCCUPIED
+  MAINTENANCE
+}
+
+enum BillingPreference {
+  APP
+  EMAIL
+  PRINT
+}
+
+enum LedgerType {
+  CHARGE
+  PAYMENT
+  CREDIT
+}
+
+enum MaintenanceStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum BillStatus {
+  DRAFT
+  SENT
+}
+
+model Unit {
+  id                  String               @id @default(uuid())
+  roomNumber          String               @unique
+  monthlyRate         Float
+  status              UnitStatus           @default(VACANT)
+  waterMeter          Float
+  electroMeter        Float
+  tenants             Tenant[]
+  ledgers             Ledger[]
+  maintenanceRequests MaintenanceRequest[]
+  billPeriods         BillPeriod[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model Tenant {
+  id                  String               @id @default(uuid())
+  firstName           String
+  lastName            String
+  email               String               @unique
+  phone               String
+  status              String               @default("ACTIVE") // ACTIVE, INACTIVE
+  depositPaid         Float                @default(0.0)
+  advancePaid         Float                @default(0.0)
+  billingPreference   BillingPreference    @default(EMAIL)
+  appAccess           Boolean              @default(false)
+  unitId              String?
+  unit                Unit?                @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  ledgers             Ledger[]
+  maintenanceRequests MaintenanceRequest[]
+  documents           Document[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model Ledger {
+  id          String     @id @default(uuid())
+  type        LedgerType
+  amount      Float
+  description String
+  receiptUrl  String?
+  isVerified  Boolean    @default(false)
+  date        DateTime   @default(now())
+  unitId      String
+  unit        Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenantId    String
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model MaintenanceRequest {
+  id          String            @id @default(uuid())
+  title       String
+  description String
+  imageUrl    String?
+  status      MaintenanceStatus @default(OPEN)
+  unitId      String
+  unit        Unit              @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  tenantId    String
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  type      String   // E.g., "LEASE", "NOTICE_ARREARS", "NOTICE_EVICTION"
+  fileUrl   String
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BillPeriod {
+  id           String     @id @default(uuid())
+  month        Int        // 1-12
+  year         Int
+  prevWater    Float
+  currWater    Float
+  prevElec     Float
+  currElec     Float
+  billPdfUrl   String?
+  status       BillStatus @default(DRAFT)
+  unitId       String
+  unit         Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([unitId, month, year])
+}
