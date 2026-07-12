@@ -27,7 +27,7 @@ export async function createUnitAction(formData: FormData) {
   });
 
   revalidatePath('/units');
-  redirect('/units');
+  redirect('/units?success=Unit created successfully');
 }
 
 export async function updateUnitMetersAction(id: string, formData: FormData) {
@@ -35,13 +35,19 @@ export async function updateUnitMetersAction(id: string, formData: FormData) {
 
   const waterMeter = parseFloat(formData.get('waterMeter') as string);
   const electroMeter = parseFloat(formData.get('electroMeter') as string);
+  const waterWaived = formData.get('waterWaived') === 'true';
+  const elecWaived = formData.get('elecWaived') === 'true';
 
   await unitService.updateUnit(id, {
     waterMeter: isNaN(waterMeter) ? undefined : waterMeter,
     electroMeter: isNaN(electroMeter) ? undefined : electroMeter,
+    waterWaived,
+    elecWaived,
   });
 
   revalidatePath(`/units/${id}`);
+  revalidatePath('/units');
+  redirect(`/units/${id}?success=Meter readings and waivers updated successfully`);
 }
 
 export async function updateUnitStatusAction(id: string, status: UnitStatus) {
@@ -50,4 +56,5 @@ export async function updateUnitStatusAction(id: string, status: UnitStatus) {
   await unitService.updateUnit(id, { status });
   revalidatePath(`/units/${id}`);
   revalidatePath('/units');
+  redirect(`/units/${id}?success=Unit status changed to ${status}`);
 }

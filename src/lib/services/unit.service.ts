@@ -7,6 +7,8 @@ export interface CreateUnitInput {
   status?: UnitStatus;
   waterMeter: number;
   electroMeter: number;
+  waterWaived?: boolean;
+  elecWaived?: boolean;
 }
 
 export interface UpdateUnitInput {
@@ -15,6 +17,8 @@ export interface UpdateUnitInput {
   status?: UnitStatus;
   waterMeter?: number;
   electroMeter?: number;
+  waterWaived?: boolean;
+  elecWaived?: boolean;
 }
 
 export const unitService = {
@@ -43,6 +47,12 @@ export const unitService = {
           orderBy: { date: 'desc' },
           take: 20,
         },
+        maintenanceRequests: {
+          include: {
+            tenant: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
   },
@@ -55,14 +65,24 @@ export const unitService = {
         status: data.status ?? UnitStatus.VACANT,
         waterMeter: data.waterMeter,
         electroMeter: data.electroMeter,
+        waterWaived: data.waterWaived ?? false,
+        elecWaived: data.elecWaived ?? false,
       },
     });
   },
 
   async updateUnit(id: string, data: UpdateUnitInput) {
-    return db.unit.update({
-      where: { id },
-      data,
+    return db.$transaction(async (tx) => {
+      if (data.status === UnitStatus.VACANT) {
+        await tx.tenant.updateMany({
+          where: { unitId: id },
+          data: { unitId: null },
+        });
+      }
+      return tx.unit.update({
+        where: { id },
+        data,
+      });
     });
   },
 

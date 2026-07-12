@@ -35,6 +35,7 @@ enum BillStatus {
   SENT
 }
 
+
 model Unit {
   id                  String               @id @default(uuid())
   roomNumber          String               @unique
@@ -42,10 +43,13 @@ model Unit {
   status              UnitStatus           @default(VACANT)
   waterMeter          Float
   electroMeter        Float
+  waterWaived         Boolean              @default(false)
+  elecWaived          Boolean              @default(false)
   tenants             Tenant[]
   ledgers             Ledger[]
   maintenanceRequests MaintenanceRequest[]
   billPeriods         BillPeriod[]
+  leases              Lease[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 }
@@ -57,17 +61,85 @@ model Tenant {
   email               String               @unique
   phone               String
   status              String               @default("ACTIVE") // ACTIVE, INACTIVE
-  depositPaid         Float                @default(0.0)
-  advancePaid         Float                @default(0.0)
   billingPreference   BillingPreference    @default(EMAIL)
+  notifyApp           Boolean              @default(false)
+  notifyEmail         Boolean              @default(true)
+  notifySms           Boolean              @default(false)
   appAccess           Boolean              @default(false)
+  leaseStartDate      DateTime             @default(now())
   unitId              String?
   unit                Unit?                @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  leases              Lease[]
   ledgers             Ledger[]
   maintenanceRequests MaintenanceRequest[]
   documents           Document[]
+  notes               TenantNote[]
+  violations          TenantViolation[]
+  paymentSubmissions  PaymentSubmission[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+}
+
+model Lease {
+  id               String              @id @default(uuid())
+  tenantId         String
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  unitId           String
+  unit             Unit                @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  monthlyRate      Float               // agreed rent for this tenant (may differ from Unit.monthlyRate)
+  securityDeposit  Float               @default(0)
+  advancePaid      Float               @default(0)
+  advanceConsumed  Boolean             @default(false) // true = advance applied to first bill instead of kept
+  advanceApplied   Boolean             @default(false) // true = first bill has already consumed advance
+  billingCycle     String              @default("MONTHSARY") // MONTHSARY | END_OF_MONTH
+  leaseStartDate   DateTime            @default(now())
+  status           String              @default("ACTIVE")  // ACTIVE | ENDED
+  addons           LeaseAddon[]
+  leaseDocuments   LeaseDocument[]
+  payments         PaymentSubmission[]
+  waterMeterBaseline Float               @default(0)
+  elecMeterBaseline  Float               @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+}
+
+model LeaseAddon {
+  id          String   @id @default(uuid())
+  leaseId     String
+  lease       Lease    @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  description String
+  amount      Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LeaseDocument {
+  id         String   @id @default(uuid())
+  leaseId    String
+  lease      Lease    @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  status     String   @default("DRAFT") // DRAFT | FINAL | POSTED
+  fileUrl    String?
+  isUploaded Boolean  @default(false)  // false = system-generated, true = manually uploaded signed copy
+  label      String?  // e.g. "Draft v1", "Signed Agreement"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PaymentSubmission {
+  id          String    @id @default(uuid())
+  leaseId     String
+  lease       Lease     @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  amount      Float
+  proofUrl    String?   // uploaded proof (bank slip, GCash screenshot)
+  notes       String?
+  status      String    @default("PENDING") // PENDING | VERIFIED | REJECTED
+  reviewedAt  DateTime?
+  ledgerId    String?   // set after landlord verifies → links to resulting Ledger CREDIT
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Ledger {
@@ -102,7 +174,7 @@ model MaintenanceRequest {
 
 model Document {
   id        String   @id @default(uuid())
-  type      String   // E.g., "LEASE", "NOTICE_ARREARS", "NOTICE_EVICTION"
+  type      String
   fileUrl   String
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -111,19 +183,77 @@ model Document {
 }
 
 model BillPeriod {
-  id           String     @id @default(uuid())
-  month        Int        // 1-12
-  year         Int
-  prevWater    Float
-  currWater    Float
-  prevElec     Float
-  currElec     Float
-  billPdfUrl   String?
-  status       BillStatus @default(DRAFT)
-  unitId       String
-  unit         Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id               String         @id @default(uuid())
+  month            Int
+  year             Int
+  prevWater        Float
+  currWater        Float
+  prevElec         Float
+  currElec         Float
+  waterRateUsed    Float          @default(50.0)
+  elecRateUsed     Float          @default(12.0)
+  lateFeeApplied   Float          @default(0.0)
+  isProrated       Boolean        @default(false)
+  billingCycleType String         @default("MONTHSARY")
+  billPdfUrl       String?
+  status           BillStatus     @default(DRAFT)
+  unitId           String
+  unit             Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  monthlyPolicyId  String?
+  monthlyPolicy    MonthlyPolicy? @relation(fields: [monthlyPolicyId], references: [id], onDelete: SetNull)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@unique([unitId, month, year])
+}
+
+model BillingConfig {
+  id             String   @id @default("global")
+  waterRate      Float    @default(50.0)
+  elecRate       Float    @default(12.0)
+  billingCycle   String   @default("MONTHSARY") // "MONTHSARY" or "END_OF_MONTH"
+  lateFeeImposed Boolean  @default(false)
+  lateFeeAmount  Float    @default(0.0)
+  landlordEmail  String?  // for cron meter-reading reminder notifications
+  landlordName   String?
+  updatedAt      DateTime @updatedAt
+}
+
+model MonthlyPolicy {
+  id             String       @id @default(uuid())
+  month          Int
+  year           Int
+  waterRate      Float
+  elecRate       Float
+  billingCycle   String
+  lateFeeImposed Boolean
+  lateFeeAmount  Float
+  billPeriods    BillPeriod[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([month, year])
+}
+
+model TenantNote {
+  id        String   @id @default(uuid())
+  date      DateTime @default(now())
+  type      String
+  content   String
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model TenantViolation {
+  id          String   @id @default(uuid())
+  date        DateTime @default(now())
+  type        String
+  description String
+  actionDone  String
+  status      String   @default("ACTIVE")
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

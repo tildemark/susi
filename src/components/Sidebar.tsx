@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Home, HomeIcon, Users, CreditCard, Wrench, FileText, Settings, Key, Building2 } from 'lucide-react';
+import { Home, Users, CreditCard, Wrench, FileText, Settings, Key, Building2, ScrollText } from 'lucide-react';
 
 interface SidebarProps {
   currentPath?: string;
@@ -10,10 +10,13 @@ export default function Sidebar() {
     { name: 'Dashboard', href: '/admin', icon: Home },
     { name: 'Units & Space', href: '/units', icon: Building2 },
     { name: 'Tenants', href: '/tenants', icon: Users },
+    { name: 'Leases', href: '/leases', icon: ScrollText },
     { name: 'Billing', href: '/billing', icon: CreditCard },
     { name: 'Maintenance', href: '/maintenance', icon: Wrench },
     { name: 'Documents', href: '/documents', icon: FileText },
+    { name: 'Settings', href: '/settings', icon: Settings },
   ];
+
 
   return (
     <aside className="w-64 bg-white text-slate-800 flex flex-col h-screen border-r border-slate-200 sticky top-0">

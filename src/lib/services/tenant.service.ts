@@ -6,9 +6,10 @@ export interface CreateTenantInput {
   lastName: string;
   email: string;
   phone: string;
-  depositPaid?: number;
-  advancePaid?: number;
   billingPreference?: BillingPreference;
+  notifyApp?: boolean;
+  notifyEmail?: boolean;
+  notifySms?: boolean;
   appAccess?: boolean;
   unitId?: string | null;
 }
@@ -19,9 +20,10 @@ export interface UpdateTenantInput {
   email?: string;
   phone?: string;
   status?: string;
-  depositPaid?: number;
-  advancePaid?: number;
   billingPreference?: BillingPreference;
+  notifyApp?: boolean;
+  notifyEmail?: boolean;
+  notifySms?: boolean;
   appAccess?: boolean;
   unitId?: string | null;
 }
@@ -50,6 +52,19 @@ export const tenantService = {
         maintenanceRequests: {
           orderBy: { createdAt: 'desc' },
         },
+        notes: {
+          orderBy: { date: 'desc' },
+        },
+        violations: {
+          orderBy: { date: 'desc' },
+        },
+        leases: {
+          include: {
+            leaseDocuments: {
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        },
       },
     });
   },
@@ -62,9 +77,10 @@ export const tenantService = {
           lastName: data.lastName,
           email: data.email,
           phone: data.phone,
-          depositPaid: data.depositPaid ?? 0,
-          advancePaid: data.advancePaid ?? 0,
           billingPreference: data.billingPreference ?? BillingPreference.EMAIL,
+          notifyApp: data.notifyApp ?? false,
+          notifyEmail: data.notifyEmail ?? true,
+          notifySms: data.notifySms ?? false,
           appAccess: data.appAccess ?? false,
           unitId: data.unitId || null,
         },
@@ -96,9 +112,10 @@ export const tenantService = {
           email: data.email,
           phone: data.phone,
           status: data.status,
-          depositPaid: data.depositPaid,
-          advancePaid: data.advancePaid,
           billingPreference: data.billingPreference,
+          notifyApp: data.notifyApp,
+          notifyEmail: data.notifyEmail,
+          notifySms: data.notifySms,
           appAccess: data.appAccess,
           unitId: data.unitId === undefined ? undefined : data.unitId,
         },

@@ -10,7 +10,7 @@ test.describe('SUSI Basic Page Loading E2E Tests', () => {
 
   test('admin interface components render on home page', async ({ page }) => {
     // Navigate to admin home (which redirects/asks login or runs on credentials)
-    await page.goto('http://localhost:3000/');
+    await page.goto('http://localhost:3000/admin');
     // Verify dashboard title structure
     await expect(page.locator('h1')).toContainText('Dashboard Overview');
   });

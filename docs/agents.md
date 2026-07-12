@@ -51,3 +51,4 @@ Please initialize and build the MVP for **SUSI (System for Unit & Space Inventor
 7. **Create a TESTING>.md** for testing instructions.
 8. **Create a PROJECT_PLAN>.md** for project roadmap and milestones.
 9. **Versioning:** we will use semantic versioning for our releases and maintain a changelog of all changes.
+10. **em-dash:** do not use em-dashes in code or documentation. Use hyphens instead.

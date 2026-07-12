@@ -1,6 +1,4 @@
-'use client';
-
-import { useState } from 'react';
+import React from 'react';
 
 export function Button({
   className = '',
@@ -13,7 +11,7 @@ export function Button({
   children: React.ReactNode;
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <button

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Lease" ADD COLUMN     "elecMeterBaseline" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "waterMeterBaseline" DOUBLE PRECISION NOT NULL DEFAULT 0;
